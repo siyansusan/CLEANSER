@@ -1,35 +1,37 @@
-#!/usr/bin/env python
-import sys
-import statistics
 import os
-import ProgramName
-import gzip
-import numpy as np
-#=========================================================================
-# main()
-#=========================================================================
+import sys
 
-if len(sys.argv)!=2:
-    exit(ProgramName.get()+"<mRNA_lib.txt>\n")
-(lib_size)=sys.argv[1]
 
-norm_dict = {}
-count = 0
-tot_size = 0
+def normalize(lib_file):
+    cell_counts = []
+    norm_cell_counts = []
+    count = 0
+    total_size = 0
 
-with open(lib_size, "r") as lib_file:
     for line in lib_file:
-        (cell_num, size) = line.strip().split("\t")
+        cell_num, size = line.strip().split("\t")
+        size = int(size)
         count += 1
-        tot_size += int(size)
-        norm_dict[cell_num] = size
+        total_size += size
+        cell_counts.append((cell_num, size))
 
-avg_size = int(tot_size)/int(count)
+    print(total_size, count, total_size // count)
+    avg_size = total_size // count
 
-for key_cell in norm_dict:
-    lib_size = int(norm_dict[key_cell])
-    norm_size = lib_size/avg_size
-    size = str(norm_size)
-    print(key_cell, size, sep = "\t")
+    for cell_num, size in cell_counts:
+        norm_size = size / avg_size
+        norm_cell_counts.append((cell_num, norm_size))
+
+    return norm_cell_counts
 
 
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print(f"{os.path.basename(sys.argv[0])} <mRNA_lib.txt>\n")
+        sys.exit(1)
+
+    with os.open(sys.argv[1], "r") as lib_file:
+        normalized_sizes = normalize(lib_file)
+
+    for cell_num, norm_size in normalized_sizes:
+        print(f"{cell_num}\t{norm_size}")

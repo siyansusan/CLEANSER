@@ -1,8 +1,8 @@
 data {
   int<lower=1> N;
-  int X[N];
+  array[N] int X;
   int numZeros;
-  real L[N];
+  array[N] real L;
 }
 parameters {
   real<lower=0.000001,upper=5> lambda; // Poison rate parameter
@@ -35,9 +35,9 @@ model {
    //                        log(1-r)+neg_binomial_2_lpmf(0|nbMean,nbDisp));
 }
 generated quantities {
-   real<lower=0,upper=1> PZi[N];
-   real likeli_poisson[N];
-   real likeli_negbin[N];
+   array[N]  real<lower=0,upper=1> PZi;
+   array[N] real likeli_poisson;
+   array[N] real likeli_negbin;
    real lambdasum=0;
    real nbsum=0;
    for(i in 1:N) {

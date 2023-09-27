@@ -1,53 +1,49 @@
-#!/usr/bin/env python
-#=========================================================================
+# =========================================================================
 # This is OPEN SOURCE SOFTWARE governed by the Gnu General Public
 # License (GPL) version 3, as described at www.opensource.org.
 # Author:Susan Liu
-#=========================================================================
-import sys
-import statistics
-import os
-import ProgramName
+# =========================================================================
+
+import argparse
 import gzip
-
-#=========================================================================
-# main()
-#=========================================================================
-
-if len(sys.argv)!=3:
-    exit(ProgramName.get()+" <filename.mtx.gz> <col>\n")
-mtxFile,col=sys.argv[1:]
-
-col=int(col)
-d={}
-
-with gzip.open(mtxFile,"r") as matr:
-    matr.readline()
-    matr.readline()
-    matr.readline()
-    for line in matr:
-        line = line.decode("utf8")
-        (guide,cell,lib)=line.strip().split()
-        if col==1:
-            sort_by=cell
-        if col==0:
-            sort_by=guide
-        if sort_by in d:
-            d[sort_by]+=int(lib)
-        else:
-            d[sort_by]=int(lib)
-
-#lib_size=list(d.values())
-#med_lib_size=statistics.median(lib_size)
-
-#for key in d:
-#    d[key]=med_lib_size/d[key]
-
-for key in d:
-    print(str(key)+"\t"+str(d[key]))
+from collections import defaultdict
 
 
-#TO FIND TOP
-#sorted_d=sorted(d,key=d.get)
-#print(sorted_d)
-#print(d["44118"])
+def mm_counts(mtx_file, col):
+    counts = defaultdict(lambda: 0)
+
+    for line in mtx_file:
+        # Skip market matrix header/comments
+        if line.startswith("%"):
+            continue
+
+        # skip the first non-comment line. It's just dimension info we
+        # are ignoring
+        break
+
+    for line in mtx_file:
+        mm_items = line.strip().split()
+        counts[mm_items[col]] += int(mm_items[2])
+
+    return counts
+
+
+def get_args():
+    parser = argparse.ArgumentParser("mm_counts", description="")
+    parser.add_argument("matrix")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("-c", "--cell", dest="col", action="store_const", const=1)
+    group.add_argument("-g", "--guide", dest="col", action="store_const", const=0)
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = get_args()
+
+    with gzip.open(args.matrix, "rt", encoding="utf8") as matr:
+        counted_columns = mm_counts(matr, args.col)
+
+    for key, value in counted_columns.items():
+        print(f"{key}\t{value}")

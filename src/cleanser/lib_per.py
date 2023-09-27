@@ -12,25 +12,18 @@ from collections import defaultdict
 def mm_counts(mtx_file, col):
     counts = defaultdict(lambda: 0)
 
-    # Skip market matrix headers
-    mtx_file.readline()
-    mtx_file.readline()
-    mtx_file.readline()
+    for line in mtx_file:
+        # Skip market matrix header/comments
+        if line.startswith("%"):
+            continue
+
+        # skip the first non-comment line. It's just dimension info we
+        # are ignoring
+        break
 
     for line in mtx_file:
         mm_items = line.strip().split()
         counts[mm_items[col]] += int(mm_items[2])
-
-    # lib_size=list(d.values())
-    # med_lib_size=statistics.median(lib_size)
-
-    # for key in d:
-    #    d[key]=med_lib_size/d[key]
-
-    # TO FIND TOP
-    # sorted_d=sorted(d,key=d.get)
-    # print(sorted_d)
-    # print(d["44118"])
 
     return counts
 

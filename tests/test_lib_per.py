@@ -5,9 +5,10 @@ from cleanser.lib_per import mm_counts
 
 def test_normalize():
     mm_file = io.StringIO(
-        """# 1
-#2
-#3
+        r"""%% 1
+% 2
+% 3
+3 3 4
 1 0 1
 1 1 2
 2 0 2

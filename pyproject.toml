@@ -1,0 +1,14 @@
+[project]
+name = "CLEANSER"
+authors = [
+    { name = "Siyan Liu", email = "siyan.liu432@duke.edu" },
+    { name = "Bill Majoros", email = "william.majoros@duke.edu" },
+]
+description = "Crispr Library Evaluation and Ambient Noise Suppression for Enhanced scRNA-seq"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT License" }
+classifiers = ["Programming Language :: Python :: 3"]
+dependencies = ["pystan ==3.7.0"]
+version = "1.0"
+keywords = ["scRNA-seq", "bioinformatics"]

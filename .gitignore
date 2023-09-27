@@ -1,0 +1,4 @@
+dist/
+CLEANSER.egg-info
+*.pyc
+__pycache__

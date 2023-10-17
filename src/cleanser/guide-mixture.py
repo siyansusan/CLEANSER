@@ -70,11 +70,6 @@ def normalize(count_data: dict[int, int]) -> CountData:
     return norm_cell_counts
 
 
-async def go():
-    await asyncio.sleep(1)
-    return 1, 1
-
-
 def run_stan(stan_args):
     model, guide_id, X, L, num_warmup, num_samples, chains, seed = stan_args
 
@@ -92,17 +87,13 @@ def output_posteriors(stan_output, output_file):
         print(f"{x} {y} {z}", file=output_file)
 
 
-def build_model():
-    return CmdStanModel(stan_file=MODEL_FILE)
-
-
 async def run(input_file, output_file, num_warmup, num_samples, num_parallel_runs, chains, seed):
     mm_lines = read_mm_file(input_file)
     sorted_mm_lines = sorted(mm_lines, key=lambda x: x[0])
     cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines)
     normalized_counts = normalize(cumulative_counts)
 
-    stan_model = build_model()
+    stan_model = CmdStanModel(stan_file=MODEL_FILE)
 
     stan_params = [
         # X, L, num_warmup, num_samples
@@ -125,13 +116,6 @@ async def run(input_file, output_file, num_warmup, num_samples, num_parallel_run
         for guide_id, samples in executor.map(run_stan, stan_params):
             results[guide_id] = samples
 
-    for samples in results.values():
-        print(samples.stan_variables().keys())
-        print(
-            f"r={np.mean(samples.stan_variable('r'))}\tmu={np.mean(samples.stan_variable('nbMean'))}\tlambda={np.mean(samples.stan_variable('lambda'))}"
-        )
-
-    # output_posteriors(stan_output, output_file)
     return results
 
 
@@ -167,9 +151,18 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     try:
-        asyncio.run(
+        results = asyncio.run(
             run(args.input, args.output, args.num_warmup, args.num_samples, args.parallel_runs, args.chains, args.seed)
         )
+
+        for samples in results.values():
+            print(samples.stan_variables().keys())
+            print(
+                f"r={np.mean(samples.stan_variable('r'))}\tmu={np.mean(samples.stan_variable('nbMean'))}\tlambda={np.mean(samples.stan_variable('lambda'))}"
+            )
+
+        # output_posteriors(stan_output, output_file)
+
         print(f"Random seed: {args.seed}")
     except KeyboardInterrupt:
         sys.exit(1)

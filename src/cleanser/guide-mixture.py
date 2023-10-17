@@ -11,11 +11,13 @@ import multiprocessing as mp
 import sys
 from collections import defaultdict
 from itertools import islice
+from random import randint
 
 from cmdstanpy import CmdStanModel
 import numpy as np
 
 MODEL_FILE = "./guide-mixture.stan"
+MAX_SEED_INT = 4_294_967_295  # 2^32 - 1, the large seed allowed by STAN
 
 MMLines = list[tuple[int, int, int]]
 CountData = dict[int, float]
@@ -74,9 +76,11 @@ async def go():
 
 
 def run_stan(stan_args):
-    model, guide_id, X, L, num_warmup, num_samples = stan_args
+    model, guide_id, X, L, num_warmup, num_samples, chains, seed = stan_args
 
-    fit = model.sample(data={"N": len(X), "X": X, "L": L}, iter_warmup=num_warmup, iter_sampling=num_samples)
+    fit = model.sample(
+        data={"N": len(X), "X": X, "L": L}, iter_warmup=num_warmup, iter_sampling=num_samples, chains=chains, seed=seed
+    )
     return guide_id, fit
 
 
@@ -92,7 +96,7 @@ def build_model():
     return CmdStanModel(stan_file=MODEL_FILE)
 
 
-async def run(input_file, output_file, num_warmup, num_samples, num_cores):
+async def run(input_file, output_file, num_warmup, num_samples, num_parallel_runs, chains, seed):
     mm_lines = read_mm_file(input_file)
     sorted_mm_lines = sorted(mm_lines, key=lambda x: x[0])
     cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines)
@@ -109,13 +113,15 @@ async def run(input_file, output_file, num_warmup, num_samples, num_cores):
             [normalized_counts[cell_id] for cell_id, _ in guide_counts],
             num_warmup,
             num_samples,
+            chains,
+            (seed + guide_id) % MAX_SEED_INT,
         )
         for guide_id, guide_counts in per_guide_counts.items()
-        # for guide_id, guide_counts in islice(per_guide_counts.items(), 3)
+        # for guide_id, guide_counts in islice(per_guide_counts.items(), 10)
     ]
 
     results = {}
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_parallel_runs) as executor:
         for guide_id, samples in executor.map(run_stan, stan_params):
             results[guide_id] = samples
 
@@ -145,12 +151,14 @@ def get_args():
     parser.add_argument("-o", "--output", help="output file name of per-guide posterior probabilities")
     parser.add_argument("-n", "--num-samples", type=int, default=1000)
     parser.add_argument("-w", "--num-warmup", type=int, default=300)
+    parser.add_argument("-s", "--seed", type=int, default=randint(0, MAX_SEED_INT))
+    parser.add_argument("-c", "--chains", type=int, default=4)
     parser.add_argument(
-        "-c",
-        "--cores",
+        "-p",
+        "--parallel-runs",
         type=int,
         default=mp.cpu_count(),
-        help="Number of CPUs to use for running the model",
+        help="Number of guide models to run in parallel",
     )
 
     return parser.parse_args()
@@ -158,9 +166,10 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-
     try:
-        asyncio.run(run(args.input, args.output, args.num_warmup, args.num_samples, args.cores))
-        print("done!")
+        asyncio.run(
+            run(args.input, args.output, args.num_warmup, args.num_samples, args.parallel_runs, args.chains, args.seed)
+        )
+        print(f"Random seed: {args.seed}")
     except KeyboardInterrupt:
         sys.exit(1)

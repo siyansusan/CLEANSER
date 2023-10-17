@@ -74,7 +74,12 @@ def run_stan(stan_args):
     model, guide_id, X, L, num_warmup, num_samples, chains, seed = stan_args
 
     fit = model.sample(
-        data={"N": len(X), "X": X, "L": L}, iter_warmup=num_warmup, iter_sampling=num_samples, chains=chains, seed=seed
+        data={"N": len(X), "X": X, "L": L},
+        iter_warmup=num_warmup,
+        iter_sampling=num_samples,
+        chains=chains,
+        seed=seed,
+        show_progress=False,
     )
     return guide_id, fit
 

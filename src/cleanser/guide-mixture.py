@@ -1,205 +1,166 @@
-#!/usr/bin/env python
-#=========================================================================
+# =========================================================================
 # This is OPEN SOURCE SOFTWARE governed by the Gnu General Public
 # License (GPL) version 3, as described at www.opensource.org.
-# Copyright (C)2018 William H. Majoros (bmajoros@alumni.duke.edu)
-#=========================================================================
-from __future__ import (absolute_import, division, print_function, 
-   unicode_literals, generators, nested_scopes, with_statement)
-from builtins import (bytes, dict, int, list, object, range, str, ascii,
-   chr, hex, input, next, oct, open, pow, round, super, filter, map, zip)
-# The above imports should allow this program to run in both Python 2 and
-# Python 3.  You might need to update your version of module "future".
+# Copyright (C)2023 Siyan Liu (siyan.liu432@duke.edu)
+# =========================================================================
+
+import argparse
+import asyncio
+import concurrent.futures
+import multiprocessing as mp
 import sys
-import os
-import math
-import ProgramName
-from Rex import Rex
-rex=Rex()
-import TempFilename
-from StanParser import StanParser
-from Stan import Stan
-from DataFrame import DataFrame
-from SummaryStats import SummaryStats
-import getopt
-import random
+from collections import defaultdict
+from itertools import islice
 
-DEBUG=False
-STDERR=TempFilename.generate(".stderr")
-INPUT_FILE=TempFilename.generate(".staninputs")
-INIT_FILE=TempFilename.generate(".staninit")
-OUTPUT_TEMP=TempFilename.generate(".stanoutputs")
+from cmdstanpy import CmdStanModel
+import numpy as np
 
-#def writeInitializationFile(filename):
-#    OUT=open(filename,"wt")
-#    r=random.uniform(0.01,0.99)
-#    mu=random.gauss(0,1)
-#    sigma=math.exp(random.gauss(0,2))
-#    print("r <-",r,file=OUT)
-#    print("mu <-",mu,file=OUT)
-#    print("sigma <-",sigma,file=OUT)
-#    OUT.close()
+MODEL_FILE = "./guide-mixture.stan"
 
-def writeInputsFile(stan,X,filename,numZeros,L):
-    OUT=open(filename,"wt")
-    print("N <-",str(len(X)),file=OUT)
-    print("numZeros <-",numZeros,file=OUT)
-    stan.writeOneDimArray("X",X,len(X),OUT)
-    stan.writeOneDimArray("L",L,len(L),OUT)
-    #print(str(len(X)))
-    #print(str(len(L)))
-    OUT.close()
-
-def runSTAN(model,X,numWarmup,numSamples,infile,outfile,numZeros,L):
-    # Create STAN object
-    stan=Stan(model)
-
-    # Write input and initialization files
-    writeInputsFile(stan,X,INPUT_FILE,numZeros,L)
-    global INIT_FILE
-    #writeInitializationFile(INIT_FILE)
-
-    # Run STAN model
-    #INIT_FILE=None; ### DEBUGGING
-    if(DEBUG):
-        print(stan.getCmd(numWarmup,numSamples,INPUT_FILE,OUTPUT_TEMP,STDERR,INIT_FILE))
-    stan.run(numWarmup,numSamples,INPUT_FILE,OUTPUT_TEMP,STDERR,INIT_FILE)
-
-    # Parse MCMC output
-    parser=StanParser(OUTPUT_TEMP)
-    r=parser.getVariable("r")
-    LAMBDA = parser.getVariable("lambda")
-    nbMean=parser.getVariable("nbMean")
-    nbDisp = parser.getVariable("nbDisp")
-
-    #sLAMBDA = parser.getVariable("slambda")
-    #snbMean = parser.getVariable("snbMean")
-    (med_LAMBDA,a,b) = parser.getMedianAndCI(0.95,"lambda")
-    (med_nbMean,a,b)=parser.getMedianAndCI(0.95,"nbMean")
-    (assignments) =getAssignments(parser)
-    return (r,nbMean, nbDisp, LAMBDA, med_LAMBDA, med_nbMean, assignments)
-
-#pass lambda and nbmean to compare, lambda should be smaller than nbmean 
-def getAssignments(parser):
-    assignments=[]
-    likeli_poisson=[]
-    likeli_negbin=[]
-    poisson_sum=[]
-    negbin_sum=[]
-    names=parser.getVarNames()
-    for name in names:
-        #print(name)
-    #do something similar
-        if(len(name)>=4 and name[:4]=="PZi."):
-            samples=parser.getVariable(name)
-            median=SummaryStats.median(samples)
-            assignments.append(median)
-        #if len(name)>=4 and name[:10]=="likeli_neg":
-        #    samples=parser.getVariable(name)
-        #    median=SummaryStats.median(samples)
-        #    likeli_negbin.append(median)
-        #if(len(name)>=4 and name[:10]=="likeli_poi"):
-        #    samples=parser.getVariable(name)
-        #    median=SummaryStats.median(samples)
-        #    likeli_poisson.append(median)
-        #if (name[:9]=="lambdasum"):
-        #    samples=parser.getVariable(name)
-        #    median=SummaryStats.median(samples)
-        #    poisson_sum.append(median)
-        #if (name[:5]=="nbsum"):
-        #    samples=parser.getVariable(name)
-        #    median=SummaryStats.median(samples)
-        #    negbin_sum.append(median)
+MMLines = list[tuple[int, int, int]]
+CountData = dict[int, float]
 
 
-    return (assignments)
+def read_mm_file(mtx_file) -> MMLines:
+    mm_lines = []
+    for line in mtx_file:
+        # Skip market matrix header/comments
+        if line.startswith("%"):
+            continue
 
-def writeAssignments(cellIDs,assignments,assignFile, LAMBDA, mu):
-    with open(assignFile,"wt") as ASSIGN:
-        N=len(assignments)
-        z = 0
-        if float(LAMBDA) >= float(mu):
-            z = 1
-        for i in range(N):
-            #print(str(i))
-            cellID=cellIDs[i]
-            x=assignments[i]
-            #poisson=likeli_poisson[i]
-            #negbin= likeli_negbin[i]
-            #lam = LAMBDA[i]
-            #Mu = mu[i]
-            #if float(lam) >= float(Mu):
-            #    x = 0
-            #if z == 1:
-            #    x = 0
-            print(cellID,x, sep="\t",file=ASSIGN)
+        # skip the first non-comment line. It's just dimension info we
+        # are ignoring
+        break
 
-def writeSamples(r,mu,disp,LAMBDA, outfile):
-    N=len(r)
-    with open(outfile,"wt") as SAMPLES:
-        print("r\tmu\tDisp\tlambda",file=SAMPLES)
-        for i in range(N):
-            print(r[i],mu[i], disp[i], LAMBDA[i], sep="\t",file=SAMPLES)
+    for line in mtx_file:
+        guide, cell, count = line.strip().split()
+        mm_lines.append((int(guide), int(cell), int(count)))
 
-#=========================================================================
-# main()
-#=========================================================================
-(options,args)=getopt.getopt(sys.argv[1:],"s:")
-if(len(args)!=8):
-    #print(str(len(args)))
-    exit(ProgramName.get()+" [-s stanfile] <model> <input.txt> <r-and-mu.txt> <Zi.txt> <#warmup> <#keep> <#zeros> <cell_lib>\n   -s = save raw STAN file\n")
-(model,inFile,outfile,assignFile,numWarmup,numSamples,numZeros, lib)=args
-stanFile=None
-for pair in options:
-    (key,value)=pair
-    if(key=="-s"): stanFile=value
-numZeros=int(numZeros)
+    return mm_lines
 
-cell_dict = {}
 
-# Read inputs
-#df=DataFrame.readTable(inFile,header=False,rowNames=False)
-#df.toInt()
-#cellID=df.getColI(0).getRaw()
-#X=df.getColI(1).getRaw() # read counts
-cellID = []
-X = []
-L = []
+def mm_counts(mtx_lines: MMLines) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
+    cumulative_counts = defaultdict(lambda: 0)
+    per_guide_counts = defaultdict(lambda: [])
 
-with open(lib, "r") as lib_file:
-    for line in lib_file:
-        (cell_ID, lib_size) = line.strip().split("\t")
-        cell_dict[cell_ID] = lib_size
+    for guide, cell_id, guide_count in mtx_lines:
+        cumulative_counts[cell_id] += guide_count
+        per_guide_counts[guide].append((cell_id, guide_count))
 
-with open(inFile, "r") as count_file:
-    for line in count_file:
-        (cell_ID, guide_count) = line.strip().split("\t")
-        L.append(cell_dict[cell_ID])
-        X.append(guide_count)
-        cellID.append(cell_ID)
-#print(L[:5])
-#print(X[:5])
-#print(cellID[:5])
-# Run STAN
-(r,mu,disp,LAMBDA, med_LAMBDA, med_mu,  assignments)=runSTAN(model,X,numWarmup,numSamples,INPUT_FILE,INIT_FILE,numZeros,L)
+    return cumulative_counts, per_guide_counts
 
-#print(str(len(LAMBDA)), str(len(assignments)))
 
-print("r=",SummaryStats.median(r),
-      "\tmu=",SummaryStats.median(mu),"\tlambda=",SummaryStats.median(LAMBDA),sep="")
-#print("poisson_sum=", poisson_sum, "\tnb_sum=", nb_sum, sep="")
+def normalize(count_data: dict[int, int]) -> CountData:
+    norm_cell_counts = {}
+    count = 0
+    total_size = 0
 
-# Write samples into output file
-writeSamples(r,mu,disp, LAMBDA, outfile)
-#print(str(len(LAMBDA)))
-#print(str(len(mu)))
-writeAssignments(cellID,assignments,assignFile, med_LAMBDA, med_mu)
+    for cell_id, size in count_data.items():
+        count += 1
+        total_size += size
 
-# Clean up
-if(not DEBUG):
-    os.remove(STDERR)
-    os.remove(INPUT_FILE)
-if(stanFile is None): 
-    if(not DEBUG): os.remove(OUTPUT_TEMP)
-else: os.system("mv "+OUTPUT_TEMP+" "+stanFile)
+    avg_size = total_size // count
 
+    for cell_id, size in count_data.items():
+        norm_size = size / avg_size
+        norm_cell_counts[cell_id] = norm_size
+
+    return norm_cell_counts
+
+
+async def go():
+    await asyncio.sleep(1)
+    return 1, 1
+
+
+def run_stan(stan_args):
+    model, guide_id, X, L, num_warmup, num_samples = stan_args
+
+    fit = model.sample(data={"N": len(X), "X": X, "L": L}, iter_warmup=num_warmup, iter_sampling=num_samples)
+    return guide_id, fit
+
+
+def output_posteriors(stan_output, output_file):
+    if output_file is None:
+        output_file = sys.stdout
+
+    for x, y, z in stan_output:
+        print(f"{x} {y} {z}", file=output_file)
+
+
+def build_model():
+    return CmdStanModel(stan_file=MODEL_FILE)
+
+
+async def run(input_file, output_file, num_warmup, num_samples, num_cores):
+    mm_lines = read_mm_file(input_file)
+    sorted_mm_lines = sorted(mm_lines, key=lambda x: x[0])
+    cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines)
+    normalized_counts = normalize(cumulative_counts)
+
+    stan_model = build_model()
+
+    stan_params = [
+        # X, L, num_warmup, num_samples
+        (
+            stan_model,
+            guide_id,
+            [guide_count for _, guide_count in guide_counts],
+            [normalized_counts[cell_id] for cell_id, _ in guide_counts],
+            num_warmup,
+            num_samples,
+        )
+        for guide_id, guide_counts in per_guide_counts.items()
+        # for guide_id, guide_counts in islice(per_guide_counts.items(), 3)
+    ]
+
+    results = {}
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_cores) as executor:
+        for guide_id, samples in executor.map(run_stan, stan_params):
+            results[guide_id] = samples
+
+    for samples in results.values():
+        print(samples.stan_variables().keys())
+        print(
+            f"r={np.mean(samples.stan_variable('r'))}\tmu={np.mean(samples.stan_variable('nbMean'))}\tlambda={np.mean(samples.stan_variable('lambda'))}"
+        )
+
+    # output_posteriors(stan_output, output_file)
+    return results
+
+
+def get_args():
+    parser = argparse.ArgumentParser(
+        "guide-mixture",
+        description="Crispr Library Evaluation and Ambient Noise Suppression for Enhanced scRNA-seq",
+    )
+
+    parser.add_argument(
+        "-i",
+        "--input",
+        help="Matrix Market file of guide library information",
+        type=argparse.FileType("r", encoding="utf-8"),
+        required=True,
+    )
+    parser.add_argument("-o", "--output", help="output file name of per-guide posterior probabilities")
+    parser.add_argument("-n", "--num-samples", type=int, default=1000)
+    parser.add_argument("-w", "--num-warmup", type=int, default=300)
+    parser.add_argument(
+        "-c",
+        "--cores",
+        type=int,
+        default=mp.cpu_count(),
+        help="Number of CPUs to use for running the model",
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = get_args()
+
+    try:
+        asyncio.run(run(args.input, args.output, args.num_warmup, args.num_samples, args.cores))
+        print("done!")
+    except KeyboardInterrupt:
+        sys.exit(1)

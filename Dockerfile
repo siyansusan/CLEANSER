@@ -8,7 +8,8 @@ WORKDIR /cleanser
 
 COPY . .
 
-RUN pip install cmdstanpy
-RUN install_cmdstan
 RUN pip install build
 RUN python -m build .
+RUN pip install dist/*.whl
+RUN install_cmdstan
+

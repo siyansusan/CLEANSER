@@ -4,20 +4,13 @@
 # Copyright (C)2023 Siyan Liu (siyan.liu432@duke.edu)
 # =========================================================================
 
-import argparse
-import asyncio
 import concurrent.futures
-import multiprocessing as mp
-import sys
 from collections import defaultdict
-from itertools import islice
-from random import randint
 
 from cmdstanpy import CmdStanModel
-import numpy as np
 
 MODEL_FILE = "./guide-mixture.stan"
-MAX_SEED_INT = 4_294_967_295  # 2^32 - 1, the large seed allowed by STAN
+MAX_SEED_INT = 4_294_967_295  # 2^32 - 1, the largest seed allowed by STAN
 
 MMLines = list[tuple[int, int, int]]
 CountData = dict[int, float]
@@ -84,15 +77,7 @@ def run_stan(stan_args):
     return guide_id, fit
 
 
-def output_posteriors(stan_output, output_file):
-    if output_file is None:
-        output_file = sys.stdout
-
-    for x, y, z in stan_output:
-        print(f"{x} {y} {z}", file=output_file)
-
-
-async def run(input_file, output_file, num_warmup, num_samples, num_parallel_runs, chains, seed):
+async def run(input_file, num_warmup, num_samples, num_parallel_runs, chains, seed):
     mm_lines = read_mm_file(input_file)
     sorted_mm_lines = sorted(mm_lines, key=lambda x: x[0])
     cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines)
@@ -101,73 +86,22 @@ async def run(input_file, output_file, num_warmup, num_samples, num_parallel_run
     stan_model = CmdStanModel(stan_file=MODEL_FILE)
 
     stan_params = [
-        # X, L, num_warmup, num_samples
         (
             stan_model,
             guide_id,
-            [guide_count for _, guide_count in guide_counts],
-            [normalized_counts[cell_id] for cell_id, _ in guide_counts],
+            [guide_count for _, guide_count in guide_counts],  # X
+            [normalized_counts[cell_id] for cell_id, _ in guide_counts],  # L
             num_warmup,
             num_samples,
             chains,
             (seed + guide_id) % MAX_SEED_INT,
         )
         for guide_id, guide_counts in per_guide_counts.items()
-        # for guide_id, guide_counts in islice(per_guide_counts.items(), 10)
     ]
 
     results = {}
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_parallel_runs) as executor:
         for guide_id, samples in executor.map(run_stan, stan_params):
-            results[guide_id] = samples
+            results[guide_id] = (samples, per_guide_counts[guide_id])
 
     return results
-
-
-def get_args():
-    parser = argparse.ArgumentParser(
-        "guide-mixture",
-        description="Crispr Library Evaluation and Ambient Noise Suppression for Enhanced scRNA-seq",
-    )
-
-    parser.add_argument(
-        "-i",
-        "--input",
-        help="Matrix Market file of guide library information",
-        type=argparse.FileType("r", encoding="utf-8"),
-        required=True,
-    )
-    parser.add_argument("-o", "--output", help="output file name of per-guide posterior probabilities")
-    parser.add_argument("-n", "--num-samples", type=int, default=1000)
-    parser.add_argument("-w", "--num-warmup", type=int, default=300)
-    parser.add_argument("-s", "--seed", type=int, default=randint(0, MAX_SEED_INT))
-    parser.add_argument("-c", "--chains", type=int, default=4)
-    parser.add_argument(
-        "-p",
-        "--parallel-runs",
-        type=int,
-        default=mp.cpu_count(),
-        help="Number of guide models to run in parallel",
-    )
-
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-    args = get_args()
-    try:
-        results = asyncio.run(
-            run(args.input, args.output, args.num_warmup, args.num_samples, args.parallel_runs, args.chains, args.seed)
-        )
-
-        for samples in results.values():
-            print(samples.stan_variables().keys())
-            print(
-                f"r={np.mean(samples.stan_variable('r'))}\tmu={np.mean(samples.stan_variable('nbMean'))}\tlambda={np.mean(samples.stan_variable('lambda'))}"
-            )
-
-        # output_posteriors(stan_output, output_file)
-
-        print(f"Random seed: {args.seed}")
-    except KeyboardInterrupt:
-        sys.exit(1)

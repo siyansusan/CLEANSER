@@ -13,6 +13,9 @@ dependencies = ["cmdstanpy ==1.2.0"]
 version = "1.0"
 keywords = ["scRNA-seq", "bioinformatics"]
 
+[project.scripts]
+cleanser = "cleanser.run:run_cli"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

@@ -18,15 +18,15 @@ model {
 
   // Likelihoods:
   for(i in 1:N) {
-        real slambda = lambda;
-     real snbDisp = nbDisp;
-     real snbMean = nbMean * L[i];
-     target += log_sum_exp(log(1-r) + poisson_lpmf(X[i] | slambda),
-                           log(r) + neg_binomial_2_lpmf(X[i] | snbMean, snbDisp)) -
-               log_diff_exp(log(1),
-                            log_sum_exp(log(1-r) + log(exp(-slambda)),
-                                        log(r) + snbDisp * (log(snbDisp) - log_sum_exp(log(snbDisp),
-                                                                                       log(snbMean)))));
+    real slambda = lambda;
+    real snbDisp = nbDisp;
+    real snbMean = nbMean * L[i];
+    target += log_sum_exp(log(1-r) + poisson_lpmf(X[i] | slambda),
+                          log(r) + neg_binomial_2_lpmf(X[i] | snbMean, snbDisp)) -
+              log_diff_exp(log(1),
+                           log_sum_exp(log(1-r) + log(exp(-slambda)),
+                                       log(r) + snbDisp * (log(snbDisp) - log_sum_exp(log(snbDisp),
+                                                                                      log(snbMean)))));
   }
 }
 

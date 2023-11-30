@@ -20,7 +20,7 @@ cleanser = "cleanser.run:run_cli"
 where = ["src"]
 
 [tool.setuptools.package-data]
-cleanser = ["*.bash", "*.stan"]
+cleanser = ["*.stan"]
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]

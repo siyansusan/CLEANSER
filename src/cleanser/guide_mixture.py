@@ -6,10 +6,12 @@
 
 import concurrent.futures
 from collections import defaultdict
+from importlib.resources import files
 
 from cmdstanpy import CmdStanModel
 
-MODEL_FILE = "./guide-mixture.stan"
+CS_MODEL_FILE = "cs-guide-mixture.stan"
+DC_MODEL_FILE = "dc-guide-mixture.stan"
 MAX_SEED_INT = 4_294_967_295  # 2^32 - 1, the largest seed allowed by STAN
 
 MMLines = list[tuple[int, int, int]]
@@ -34,13 +36,14 @@ def read_mm_file(mtx_file) -> MMLines:
     return mm_lines
 
 
-def mm_counts(mtx_lines: MMLines) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
+def mm_counts(mtx_lines: MMLines, threshold: int) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
     cumulative_counts = defaultdict(lambda: 0)
     per_guide_counts = defaultdict(lambda: [])
 
     for guide, cell_id, guide_count in mtx_lines:
-        cumulative_counts[cell_id] += guide_count
-        per_guide_counts[guide].append((cell_id, guide_count))
+        if guide_count <= threshold:
+            cumulative_counts[cell_id] += guide_count
+            per_guide_counts[guide].append((cell_id, guide_count))
 
     return cumulative_counts, per_guide_counts
 
@@ -77,13 +80,13 @@ def run_stan(stan_args):
     return guide_id, fit
 
 
-async def run(input_file, num_warmup, num_samples, num_parallel_runs, chains, seed):
+async def run(input_file, model, num_warmup, num_samples, num_parallel_runs, chains, normalization_threshold, seed):
     mm_lines = read_mm_file(input_file)
     sorted_mm_lines = sorted(mm_lines, key=lambda x: x[0])
-    cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines)
+    cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines, normalization_threshold)
     normalized_counts = normalize(cumulative_counts)
 
-    stan_model = CmdStanModel(stan_file=MODEL_FILE)
+    stan_model = CmdStanModel(stan_file=files("cleanser").joinpath(model))
 
     stan_params = [
         (

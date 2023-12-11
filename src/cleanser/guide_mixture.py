@@ -68,7 +68,6 @@ def normalize(count_data: dict[int, int]) -> CountData:
 
 def run_stan(stan_args):
     model, guide_id, X, L, num_warmup, num_samples, chains, seed = stan_args
-
     fit = model.sample(
         data={"N": len(X), "X": X, "L": L},
         iter_warmup=num_warmup,

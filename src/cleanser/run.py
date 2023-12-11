@@ -25,7 +25,7 @@ def output_posteriors(stan_results, output_file):
             output_file.write(f"{guide_id}\t{cell_id}\t{np.median(samples.stan_variable('PZi')[i])}\n")
 
 
-def output_samples(stan_results, output_file):
+def output_cs_samples(stan_results, output_file):
     output_file.write("guide id\tr\tmu\tDisp\tlambda\n")
     for guide_id, (samples, _) in stan_results.items():
         r = samples.stan_variable("r")
@@ -36,10 +36,29 @@ def output_samples(stan_results, output_file):
             output_file.write(f"{guide_id}\t{r_samp}\t{mu[i]}\t{disp[i]}\t{lamb[i]}\n")
 
 
-def output_stats(results):
+def output_dc_samples(stan_results, output_file):
+    output_file.write("guide id\tr\tmu\tDisp\tn_nbMean\tn_nbDisp\n")
+    for guide_id, (samples, _) in stan_results.items():
+        r = samples.stan_variable("r")
+        mu = samples.stan_variable("nbMean")
+        disp = samples.stan_variable("nbDisp")
+        n_mean = samples.stan_variable("n_nbMean")
+        n_disp = samples.stan_variable("n_nbDisp")
+        for i, r_samp in enumerate(r):
+            output_file.write(f"{guide_id}\t{r_samp}\t{mu[i]}\t{disp[i]}\t{n_mean[i]}\t{n_disp[i]}\n")
+
+
+def output_cs_stats(results):
     for _, (samples, _) in results.items():
         print(
             f"r={np.median(samples.stan_variable('r'))}\tmu={np.median(samples.stan_variable('nbMean'))}\tlambda={np.median(samples.stan_variable('lambda'))}"
+        )
+
+
+def output_dc_stats(results):
+    for _, (samples, _) in results.items():
+        print(
+            f"r={np.median(samples.stan_variable('r'))}\tmu={np.median(samples.stan_variable('nbMean'))}\tn_nbMean={np.median(samples.stan_variable('n_nbMean'))}\tn_nbDisp={np.median(samples.stan_variable('n_nbDisp'))}"
         )
 
 
@@ -88,25 +107,21 @@ def get_args():
         "--normalization-threshold",
         type=int,
         default=2,
-        help="The maximum numer of guides",
+        help="The upper threshold for including the guide counts in guide count normalization",
         dest="normalization_threshold",
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--dc",
         "--direct-capture",
-        action="store_const",
+        action="store_true",
         help="Use direct capture mixture model",
-        const=DC_MODEL_FILE,
-        dest="model_file",
     )
     group.add_argument(
         "--cs",
         "--crop-seq",
-        action="store_const",
+        action="store_true",
         help="Use crop-seq mixture model",
-        const=CS_MODEL_FILE,
-        dest="model_file",
     )
 
     return parser.parse_args()
@@ -115,11 +130,16 @@ def get_args():
 def run_cli():
     args = get_args()
 
+    if args.dc:
+        model_file = DC_MODEL_FILE
+    elif args.cs:
+        model_file = CS_MODEL_FILE
+
     try:
         results = asyncio.run(
             run(
                 args.input,
-                args.model_file,
+                model_file,
                 args.num_warmup,
                 args.num_samples,
                 args.parallel_runs,
@@ -129,8 +149,12 @@ def run_cli():
             )
         )
         output_posteriors(results, args.posteriors_output)
-        output_samples(results, args.so)
-        output_stats(results)
+        if args.dc:
+            output_dc_samples(results, args.so)
+            output_dc_stats(results)
+        elif args.cs:
+            output_cs_samples(results, args.so)
+            output_cs_stats(results)
 
         print(f"Random seed: {args.seed}")
     except KeyboardInterrupt:

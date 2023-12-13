@@ -7,6 +7,7 @@
 import concurrent.futures
 from collections import defaultdict
 from importlib.resources import files
+from operator import itemgetter
 
 from cmdstanpy import CmdStanModel
 
@@ -37,31 +38,32 @@ def read_mm_file(mtx_file) -> MMLines:
 
 
 def mm_counts(mtx_lines: MMLines, threshold: int) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
-    cumulative_counts = defaultdict(lambda: 0)
+    cumulative_counts = {}
     per_guide_counts = defaultdict(lambda: [])
 
     for guide, cell_id, guide_count in mtx_lines:
-        if guide_count <= threshold:
+        if threshold:
+            if cell_id not in cumulative_counts:
+                cumulative_counts[cell_id] = 1
+
+            if guide_count <= threshold:
+                cumulative_counts[cell_id] += guide_count
+        else:
+            if cell_id not in cumulative_counts:
+                cumulative_counts[cell_id] = 0
             cumulative_counts[cell_id] += guide_count
-            per_guide_counts[guide].append((cell_id, guide_count))
+
+        per_guide_counts[guide].append((cell_id, guide_count))
 
     return cumulative_counts, per_guide_counts
 
 
 def normalize(count_data: dict[int, int]) -> CountData:
-    norm_cell_counts = {}
-    count = 0
-    total_size = 0
+    count = len(count_data)
+    total_size = sum(count_data.values())
+    avg_size = total_size / count
 
-    for cell_id, size in count_data.items():
-        count += 1
-        total_size += size
-
-    avg_size = total_size // count
-
-    for cell_id, size in count_data.items():
-        norm_size = size / avg_size
-        norm_cell_counts[cell_id] = norm_size
+    norm_cell_counts = {cell_id: lib_size / avg_size for cell_id, lib_size in count_data.items()}
 
     return norm_cell_counts
 
@@ -81,7 +83,7 @@ def run_stan(stan_args):
 
 async def run(input_file, model, num_warmup, num_samples, num_parallel_runs, chains, normalization_threshold, seed):
     mm_lines = read_mm_file(input_file)
-    sorted_mm_lines = sorted(mm_lines, key=lambda x: x[0])
+    sorted_mm_lines = sorted(mm_lines, key=itemgetter(0, 1))
     cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines, normalization_threshold)
     normalized_counts = normalize(cumulative_counts)
 

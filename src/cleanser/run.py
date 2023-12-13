@@ -107,17 +107,17 @@ def get_args():
         "--normalization-threshold",
         type=int,
         default=2,
-        help="The upper threshold for including the guide counts in guide count normalization",
+        help="The upper threshold for including the guide counts in guide count normalization. Set to 0 for no threshold.",
         dest="normalization_threshold",
     )
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
+    model_group = parser.add_mutually_exclusive_group(required=True)
+    model_group.add_argument(
         "--dc",
         "--direct-capture",
         action="store_true",
         help="Use direct capture mixture model",
     )
-    group.add_argument(
+    model_group.add_argument(
         "--cs",
         "--crop-seq",
         action="store_true",

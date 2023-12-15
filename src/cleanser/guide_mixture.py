@@ -50,8 +50,9 @@ def mm_counts(mtx_lines: MMLines, threshold: int) -> tuple[dict[int, int], dict[
                 cumulative_counts[cell_id] += guide_count
         else:
             if cell_id not in cumulative_counts:
-                cumulative_counts[cell_id] = 0
-            cumulative_counts[cell_id] += guide_count
+                cumulative_counts[cell_id] = guide_count
+            else:
+                cumulative_counts[cell_id] += guide_count
 
         per_guide_counts[guide].append((cell_id, guide_count))
 

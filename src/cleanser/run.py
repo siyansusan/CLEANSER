@@ -17,12 +17,13 @@ def output_posteriors(stan_results, output_file):
         output_all_posteriors = False
 
     for guide_id, (samples, cell_info) in stan_results.items():
+        pzi = np.transpose(samples.stan_variable("PZi"))
         for i, (cell_id, _) in enumerate(cell_info):
             if output_all_posteriors:
                 with open(f"posteriors/{guide_id}_{cell_id}.txt", "w", encoding="ascii") as post_out:
-                    post_out.write(f"{', '.join(str(n) for n in sorted(samples.stan_variable('PZi')[i]))}")
+                    post_out.write(f"{', '.join(str(n) for n in sorted(pzi[i]))}")
 
-            output_file.write(f"{guide_id}\t{cell_id}\t{np.median(samples.stan_variable('PZi')[i])}\n")
+            output_file.write(f"{guide_id}\t{cell_id}\t{np.median(pzi[i])}\n")
 
 
 def output_cs_samples(stan_results, output_file):

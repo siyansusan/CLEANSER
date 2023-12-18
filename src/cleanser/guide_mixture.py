@@ -37,16 +37,16 @@ def read_mm_file(mtx_file) -> MMLines:
     return mm_lines
 
 
-def mm_counts(mtx_lines: MMLines, threshold: int) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
+def mm_counts(mtx_lines: MMLines, norm_lpf: int) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
     cumulative_counts = {}
     per_guide_counts = defaultdict(lambda: [])
 
     for guide, cell_id, guide_count in mtx_lines:
-        if threshold:
+        if norm_lpf:
             if cell_id not in cumulative_counts:
                 cumulative_counts[cell_id] = 1
 
-            if guide_count <= threshold:
+            if guide_count <= norm_lpf:
                 cumulative_counts[cell_id] += guide_count
         else:
             if cell_id not in cumulative_counts:
@@ -82,10 +82,10 @@ def run_stan(stan_args):
     return guide_id, fit
 
 
-async def run(input_file, model, num_warmup, num_samples, num_parallel_runs, chains, normalization_threshold, seed):
+async def run(input_file, model, num_warmup, num_samples, num_parallel_runs, chains, normalization_lpf, seed):
     mm_lines = read_mm_file(input_file)
     sorted_mm_lines = sorted(mm_lines, key=itemgetter(0, 1))
-    cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines, normalization_threshold)
+    cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines, normalization_lpf)
     normalized_counts = normalize(cumulative_counts)
 
     stan_model = CmdStanModel(stan_file=files("cleanser").joinpath(model))

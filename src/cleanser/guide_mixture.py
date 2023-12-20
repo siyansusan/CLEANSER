@@ -44,7 +44,7 @@ def mm_counts(mtx_lines: MMLines, norm_lpf: int) -> tuple[dict[int, int], dict[i
     for guide, cell_id, guide_count in mtx_lines:
         if norm_lpf:
             if cell_id not in cumulative_counts:
-                cumulative_counts[cell_id] = 1
+                cumulative_counts[cell_id] = 0
 
             if guide_count <= norm_lpf:
                 cumulative_counts[cell_id] += guide_count
@@ -55,6 +55,10 @@ def mm_counts(mtx_lines: MMLines, norm_lpf: int) -> tuple[dict[int, int], dict[i
                 cumulative_counts[cell_id] += guide_count
 
         per_guide_counts[guide].append((cell_id, guide_count))
+
+    for key, value in cumulative_counts.items():
+        if value == 0:
+            cumulative_counts[key] = 1
 
     return cumulative_counts, per_guide_counts
 

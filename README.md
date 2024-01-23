@@ -25,30 +25,33 @@ CLEANSER depends on something called [CmdStan](https://mc-stan.org/docs/cmdstan-
 
 ## Usage
 
-    usage: cleanser [-h] -i INPUT [-o POSTERIORS_OUTPUT] [--so SO] [-n NUM_SAMPLES] [-w NUM_WARMUP] [-s SEED] [-c CHAINS]
+    cleanser [-h] -i INPUT [-o POSTERIORS_OUTPUT] [--so SO] [-n NUM_SAMPLES] [-w NUM_WARMUP] [-s SEED] [-c CHAINS]
                         [-p PARALLEL_RUNS] [--lpf NORMALIZATION_LPF] (--dc | --cs)
 
-    Crispr Library Evaluation and Ambient Noise Suppression for Enhanced scRNA-seq
+`-h`, `--help` show the help message and exit
 
-    options:
-    -h, --help            show this help message and exit
-    -i INPUT, --input INPUT
-                            Matrix Market file of guide library information
-    -o POSTERIORS_OUTPUT, --posteriors-output POSTERIORS_OUTPUT
-                            output file name of per-guide/cell posterior probabilities
-    --so SO, --samples-output SO
-                            output file name of per-guide/cell posterior probabilities
-    -n NUM_SAMPLES, --num-samples NUM_SAMPLES
-    -w NUM_WARMUP, --num-warmup NUM_WARMUP
-                            The number of warmup iterations per chain
-    -s SEED, --seed SEED  The seed for the random number generator
-    -c CHAINS, --chains CHAINS
-                            The number of Markov chains
-    -p PARALLEL_RUNS, --parallel-runs PARALLEL_RUNS
-                            Number of guide models to run in parallel
-    --lpf NORMALIZATION_LPF, --normalization-lpf NORMALIZATION_LPF
-                            The upper limit for including the guide counts in guide count normalization. Set to 0 for no
-                            limit.
-    --dc, --direct-capture
-                            Use direct capture mixture model
-    --cs, --crop-seq      Use crop-seq mixture model
+`-i INPUT`, `--input INPUT` Matrix Market file of [guide library information]()
+
+`-o POSTERIORS_OUTPUT`, `--posteriors-output POSTERIORS_OUTPUT` output file name of per-guide/cell posterior probabilities
+
+`--so SO`, `--samples-output SO` output file name of sample data
+
+`-n NUM_SAMPLES`, `--num-samples NUM_SAMPLES` The number of samples to take of the model.
+
+`-w NUM_WARMUP`, `--num-warmup NUM_WARMUP` The number of warmup iterations per chain. Used by STAN for [automatic parameter tuning](https://mc-stan.org/docs/reference-manual/hmc-algorithm-parameters.html#automatic-parameter-tuning)
+
+`-s SEED`, `--seed SEED` The seed for the random number generator (This parameter will be used by STAN).
+
+`-c CHAINS`, `--chains CHAINS` The [number of Markov chains](https://mc-stan.org/docs/cmdstan-guide/mcmc-intro.html#multi-chain-sampling) (This parameter will be used by STAN).
+
+`-p PARALLEL_RUNS`, `--parallel-runs PARALLEL_RUNS` Number of guide models to run in parallel (this parameter will be used by STAN)/
+
+`--lpf NORMALIZATION_LPF`, `--normalization-lpf NORMALIZATION_LPF` The upper limit for including the guide counts in guide count normalization. Set to 0 for no limit. (LPF stands for "low pass filter")
+
+`--dc`, `--direct-capture` Use mixture model for direct capture experiments. Must specify either this or `--crop-seq`
+
+`--cs`, `--crop-seq` Use mixture model for crop-seq experiments. Must specify either this or `--direct-capture`.
+
+## Input File Format
+
+The input file has a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html#MMformat)-esque format where the column values are `Guide ID`, `Cell ID`, and `Guide Count`, in that order.

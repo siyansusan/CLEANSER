@@ -65,7 +65,7 @@ def output_dc_stats(results):
 
 def get_args():
     parser = argparse.ArgumentParser(
-        "guide-mixture",
+        "cleanser",
         description="Crispr Library Evaluation and Ambient Noise Suppression for Enhanced scRNA-seq",
     )
 

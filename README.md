@@ -7,7 +7,7 @@ CLEANSER is a gRNA-cell assignment method that uses a mixture of two distinct di
 
 **Note**: These steps have been tested on macOS and Linux, but not Windows.
 
-tl;dr:
+tl;dr
 
     git clone https://github.com/siyansusan/CLEANSER1.0.git
     cd CLEANSER1.0
@@ -28,29 +28,29 @@ CLEANSER depends on something called [CmdStan](https://mc-stan.org/docs/cmdstan-
     cleanser [-h] -i INPUT [-o POSTERIORS_OUTPUT] [--so SO] [-n NUM_SAMPLES] [-w NUM_WARMUP] [-s SEED] [-c CHAINS]
                         [-p PARALLEL_RUNS] [--lpf NORMALIZATION_LPF] (--dc | --cs)
 
-`-h`, `--help` show the help message and exit
+`-h`, `--help`: show the help message and exit
 
-`-i INPUT`, `--input INPUT` Matrix Market file of [guide library information]()
+`-i INPUT`, `--input INPUT`: Matrix Market file of [guide library information](#input-file-format)
 
-`-o POSTERIORS_OUTPUT`, `--posteriors-output POSTERIORS_OUTPUT` output file name of per-guide/cell posterior probabilities
+`-o POSTERIORS_OUTPUT`, `--posteriors-output POSTERIORS_OUTPUT`: output file name of per-guide/cell posterior probabilities
 
-`--so SO`, `--samples-output SO` output file name of sample data
+`--so SO`, `--samples-output SO`: output file name of sample data
 
-`-n NUM_SAMPLES`, `--num-samples NUM_SAMPLES` The number of samples to take of the model.
+`-n NUM_SAMPLES`, `--num-samples NUM_SAMPLES`: The number of samples to take of the model.
 
-`-w NUM_WARMUP`, `--num-warmup NUM_WARMUP` The number of warmup iterations per chain. Used by STAN for [automatic parameter tuning](https://mc-stan.org/docs/reference-manual/hmc-algorithm-parameters.html#automatic-parameter-tuning)
+`-w NUM_WARMUP`, `--num-warmup NUM_WARMUP`: The number of warmup iterations per chain. Used by STAN for [automatic parameter tuning](https://mc-stan.org/docs/reference-manual/hmc-algorithm-parameters.html#automatic-parameter-tuning)
 
-`-s SEED`, `--seed SEED` The seed for the random number generator (This parameter will be used by STAN).
+`-s SEED`, `--seed SEED`: The seed for the random number generator (This parameter will be used by STAN).
 
-`-c CHAINS`, `--chains CHAINS` The [number of Markov chains](https://mc-stan.org/docs/cmdstan-guide/mcmc-intro.html#multi-chain-sampling) (This parameter will be used by STAN).
+`-c CHAINS`, `--chains CHAINS`: The [number of Markov chains](https://mc-stan.org/docs/cmdstan-guide/mcmc-intro.html#multi-chain-sampling) (This parameter will be used by STAN).
 
-`-p PARALLEL_RUNS`, `--parallel-runs PARALLEL_RUNS` Number of guide models to run in parallel (this parameter will be used by STAN)/
+`-p PARALLEL_RUNS`, `--parallel-runs PARALLEL_RUNS`: Number of guide models to run in parallel (this parameter will be used by STAN)/
 
-`--lpf NORMALIZATION_LPF`, `--normalization-lpf NORMALIZATION_LPF` The upper limit for including the guide counts in guide count normalization. Set to 0 for no limit. (LPF stands for "low pass filter")
+`--lpf NORMALIZATION_LPF`, `--normalization-lpf NORMALIZATION_LPF`: The upper limit for including the guide counts in guide count normalization. Set to 0 for no limit. (LPF stands for "low pass filter")
 
-`--dc`, `--direct-capture` Use mixture model for direct capture experiments. Must specify either this or `--crop-seq`
+`--dc`, `--direct-capture`: Use mixture model for direct capture experiments. Must specify either this or `--crop-seq`
 
-`--cs`, `--crop-seq` Use mixture model for crop-seq experiments. Must specify either this or `--direct-capture`.
+`--cs`, `--crop-seq`: Use mixture model for crop-seq experiments. Must specify either this or `--direct-capture`.
 
 ## Input File Format
 

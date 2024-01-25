@@ -65,7 +65,7 @@ def output_dc_stats(results):
 
 def get_args():
     parser = argparse.ArgumentParser(
-        "guide-mixture",
+        "cleanser",
         description="Crispr Library Evaluation and Ambient Noise Suppression for Enhanced scRNA-seq",
     )
 
@@ -86,11 +86,13 @@ def get_args():
     parser.add_argument(
         "--so",
         "--samples-output",
-        help="output file name of per-guide/cell posterior probabilities",
+        help="output file name of sample data",
         type=argparse.FileType("w", encoding="utf-8"),
         default=sys.stdout,
     )
-    parser.add_argument("-n", "--num-samples", type=int, default=1000)
+    parser.add_argument(
+        "-n", "--num-samples", type=int, default=1000, help="The number of samples to take of the model"
+    )
     parser.add_argument("-w", "--num-warmup", type=int, default=300, help="The number of warmup iterations per chain")
     parser.add_argument(
         "-s", "--seed", type=int, default=randint(0, MAX_SEED_INT), help="The seed for the random number generator"

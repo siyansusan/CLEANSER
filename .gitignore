@@ -1,4 +1,5 @@
 dist/
+build/
 CLEANSER.egg-info
 *.pyc
 __pycache__

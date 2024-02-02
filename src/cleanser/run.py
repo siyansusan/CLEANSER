@@ -1,13 +1,39 @@
 import argparse
 import asyncio
-import multiprocessing as mp
-import sys
 import os.path
-from random import randint
+import sys
 
 import numpy as np
 
-from .guide_mixture import CS_MODEL_FILE, DC_MODEL_FILE, MAX_SEED_INT, run
+from .constants import (
+    CS_MODEL_FILE,
+    DC_MODEL_FILE,
+    DEFAULT_CHAINS,
+    DEFAULT_NORM_LPF,
+    DEFAULT_RUNS,
+    DEFAULT_SAMPLE,
+    DEFAULT_SEED,
+    DEFAULT_WARMUP,
+)
+from .guide_mixture import MMLines, run
+
+
+def read_mm_file(mtx_file) -> MMLines:
+    mm_lines = []
+    for line in mtx_file:
+        # Skip market matrix header/comments
+        if line.startswith("%"):
+            continue
+
+        # skip the first non-comment line. It's just dimension info we
+        # are ignoring
+        break
+
+    for line in mtx_file:
+        guide, cell, count = line.strip().split()
+        mm_lines.append((int(guide), int(cell), int(count)))
+
+    return mm_lines
 
 
 def output_posteriors(stan_results, output_file):
@@ -91,25 +117,25 @@ def get_args():
         default=sys.stdout,
     )
     parser.add_argument(
-        "-n", "--num-samples", type=int, default=1000, help="The number of samples to take of the model"
+        "-n", "--num-samples", type=int, default=DEFAULT_SAMPLE, help="The number of samples to take of the model"
     )
-    parser.add_argument("-w", "--num-warmup", type=int, default=300, help="The number of warmup iterations per chain")
     parser.add_argument(
-        "-s", "--seed", type=int, default=randint(0, MAX_SEED_INT), help="The seed for the random number generator"
+        "-w", "--num-warmup", type=int, default=DEFAULT_WARMUP, help="The number of warmup iterations per chain"
     )
-    parser.add_argument("-c", "--chains", type=int, default=4, help="The number of Markov chains")
+    parser.add_argument("-s", "--seed", type=int, default=DEFAULT_SEED, help="The seed for the random number generator")
+    parser.add_argument("-c", "--chains", type=int, default=DEFAULT_CHAINS, help="The number of Markov chains")
     parser.add_argument(
         "-p",
         "--parallel-runs",
         type=int,
-        default=mp.cpu_count(),
+        default=DEFAULT_RUNS,
         help="Number of guide models to run in parallel",
     )
     parser.add_argument(
         "--lpf",
         "--normalization-lpf",
         type=int,
-        default=2,
+        default=DEFAULT_NORM_LPF,
         help="The upper limit for including the guide counts in guide count normalization. Set to 0 for no limit.",
         dest="normalization_lpf",
     )
@@ -139,16 +165,17 @@ def run_cli():
         model_file = CS_MODEL_FILE
 
     try:
+        mm_lines = read_mm_file(args.input)
         results = asyncio.run(
             run(
-                args.input,
+                mm_lines,
                 model_file,
-                args.num_warmup,
-                args.num_samples,
-                args.parallel_runs,
-                args.chains,
-                args.normalization_lpf,
-                args.seed,
+                chains=args.chains,
+                normalization_lpf=args.normalization_lpf,
+                num_parallel_runs=args.parallel_runs,
+                num_samples=args.num_samples,
+                num_warmup=args.num_warmup,
+                seed=args.seed,
             )
         )
         output_posteriors(results, args.posteriors_output)

@@ -11,30 +11,18 @@ from operator import itemgetter
 
 from cmdstanpy import CmdStanModel
 
-CS_MODEL_FILE = "cs-guide-mixture.stan"
-DC_MODEL_FILE = "dc-guide-mixture.stan"
-MAX_SEED_INT = 4_294_967_295  # 2^32 - 1, the largest seed allowed by STAN
+from .constants import (
+    DEFAULT_CHAINS,
+    DEFAULT_NORM_LPF,
+    DEFAULT_RUNS,
+    DEFAULT_SAMPLE,
+    DEFAULT_SEED,
+    DEFAULT_WARMUP,
+    MAX_SEED_INT,
+)
 
 MMLines = list[tuple[int, int, int]]
 CountData = dict[int, float]
-
-
-def read_mm_file(mtx_file) -> MMLines:
-    mm_lines = []
-    for line in mtx_file:
-        # Skip market matrix header/comments
-        if line.startswith("%"):
-            continue
-
-        # skip the first non-comment line. It's just dimension info we
-        # are ignoring
-        break
-
-    for line in mtx_file:
-        guide, cell, count = line.strip().split()
-        mm_lines.append((int(guide), int(cell), int(count)))
-
-    return mm_lines
 
 
 def mm_counts(mtx_lines: MMLines, norm_lpf: int) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
@@ -86,8 +74,16 @@ def run_stan(stan_args):
     return guide_id, fit
 
 
-async def run(input_file, model, num_warmup, num_samples, num_parallel_runs, chains, normalization_lpf, seed):
-    mm_lines = read_mm_file(input_file)
+async def run(
+    mm_lines,
+    model,
+    chains=DEFAULT_CHAINS,
+    normalization_lpf=DEFAULT_NORM_LPF,
+    num_parallel_runs=DEFAULT_RUNS,
+    num_samples=DEFAULT_SAMPLE,
+    num_warmup=DEFAULT_WARMUP,
+    seed=DEFAULT_SEED,
+):
     sorted_mm_lines = sorted(mm_lines, key=itemgetter(0, 1))
     cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines, normalization_lpf)
     normalized_counts = normalize(cumulative_counts)

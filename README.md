@@ -1,4 +1,4 @@
-# CLEANSER1.0
+# CLEANSER
 
 **C**rispr **L**ibrary **E**valuation and **A**mbient **N**oise **S**uppression for **E**nhanced sc**R**NA-seq
 CLEANSER is a gRNA-cell assignment method that uses a mixture of two distinct distributions to model ambient and native gRNA presence in perturb-seq CRISPR libraries. CLEANSER takes into account gRNA-specific and cell-specific biases and generates a probability value of whether or not a gRNA is expressed natively in a cell.
@@ -9,17 +9,17 @@ CLEANSER is a gRNA-cell assignment method that uses a mixture of two distinct di
 
 tl;dr
 
-    git clone https://github.com/siyansusan/CLEANSER1.0.git
-    cd CLEANSER1.0
+    git clone https://github.com/siyansusan/CLEANSER.git
+    cd CLEANSER
     pip install .
     install_cmdstan
 
 First, clone the repository using `git` using either the https or ssh url:
 
-Https: `git clone https://github.com/siyansusan/CLEANSER1.0.git`
-SSH: `git clone git@github.com:siyansusan/CLEANSER1.0.git`
+Https: `git clone https://github.com/siyansusan/CLEANSER.git`
+SSH: `git clone git@github.com:siyansusan/CLEANSER.git`
 
-Next change into the CLEANSER1.0 directory and run `pip install .`.
+Next change into the CLEANSER directory and run `pip install .`.
 
 CLEANSER depends on something called [CmdStan](https://mc-stan.org/docs/cmdstan-guide/index.html) which, if you don't have, you'll need to install. Fortunately a script was installed as part of CLEANSER to make this easier. To install CmdStan run `install_cmdstan` which will download and install the latest version of CmdStan for CLEANSER to use.
 

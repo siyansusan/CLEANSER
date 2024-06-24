@@ -31,7 +31,7 @@ def read_mm_file(mtx_file) -> MMLines:
 
     for line in mtx_file:
         guide, cell, count = line.strip().split()
-        mm_lines.append((int(guide), int(cell), int(count)))
+        mm_lines.append((guide, cell, int(count)))
 
     return mm_lines
 
@@ -178,13 +178,13 @@ def run_cli():
                 seed=args.seed,
             )
         )
-        output_posteriors(results, args.posteriors_output)
         if args.dc:
             output_dc_samples(results, args.so)
             output_dc_stats(results)
         elif args.cs:
             output_cs_samples(results, args.so)
             output_cs_stats(results)
+        output_posteriors(results, args.posteriors_output)
 
         print(f"Random seed: {args.seed}")
     except KeyboardInterrupt:

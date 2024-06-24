@@ -9,12 +9,13 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT License" }
 classifiers = ["Programming Language :: Python :: 3"]
-dependencies = ["cmdstanpy>=1.2", "numpy>=1.26"]
+dependencies = ["cmdstanpy>=1.2", "numpy>=1.26", "matplotlib>=3.9"]
 version = "1.0"
 keywords = ["scRNA-seq", "bioinformatics"]
 
 [project.scripts]
 cleanser = "cleanser.run:run_cli"
+cleanser_qc = "cleanser_qc.run:run_cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

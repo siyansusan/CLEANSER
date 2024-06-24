@@ -3,12 +3,13 @@ import csv
 from collections import defaultdict
 from dataclasses import dataclass
 from io import StringIO
+from math import log2
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
-from cleanser.run import read_mm_file, MMLines
+from cleanser.run import MMLines, read_mm_file
 
 
 @dataclass
@@ -110,6 +111,22 @@ def plot_hist(values, bin_count, title="", x_label="", y_label="", density=False
     return fig
 
 
+def plot_scatter(x, y, title="", x_label="", y_label="") -> Figure:
+    fig, ax = plt.subplots()
+
+    # the histogram of the data
+    ax.scatter(x, y, s=0.5)
+
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.set_title(title)
+
+    # Tweak spacing to prevent clipping of ylabel
+    fig.tight_layout()
+
+    return fig
+
+
 def sample_average_output(averages: list[CSSampleMetadata | DCSampleMetadata]) -> str:
     average_text = StringIO()
 
@@ -143,6 +160,32 @@ def assigned_counts_histogram(predictions: list[Prediction], mm_lines: MMLines, 
     thresholded_preds = {(p.guide_id, p.cell_id) for p in predictions if p.prediction >= threshold}
     umis = [umi for guide_id, cell_id, umi in mm_lines if (guide_id, cell_id) in thresholded_preds]
     fig = plot_hist(umis, 100, title="cleanser", x_label="UMI", y_label="count")
+    return fig
+
+
+def posterior_umi_scatterplot(predictions: list[Prediction], mm_lines: MMLines) -> Figure:
+    umi_keys = [(p.guide_id, p.cell_id) for p in predictions]
+    posteriors = [p.prediction for p in predictions]
+
+    # order the umis to match the posteriors
+    umi_dict = {(guide_id, cell_id): umi for guide_id, cell_id, umi in mm_lines}
+    umis = [umi_dict[k] for k in umi_keys]
+
+    fig = plot_scatter(posteriors, umis, title="cleanser", x_label="Posterior", y_label="UMI")
+
+    return fig
+
+
+def posterior_umi_scatterplot_log2(predictions: list[Prediction], mm_lines: MMLines) -> Figure:
+    umi_keys = [(p.guide_id, p.cell_id) for p in predictions]
+    posteriors = [p.prediction for p in predictions]
+
+    # order the umis to match the posteriors
+    umi_dict = {(guide_id, cell_id): log2(umi) for guide_id, cell_id, umi in mm_lines}
+    umis = [umi_dict[k] for k in umi_keys]
+
+    fig = plot_scatter(posteriors, umis, title="cleanser", x_label="Posterior", y_label="log2(UMI)")
+
     return fig
 
 
@@ -198,16 +241,6 @@ def read_sample_data(sample_data_file) -> list[CSSampleMetadata | DCSampleMetada
     raise ValueError("Invalid sample data file")
 
 
-# Done: [sl601@x2-02-1 guide-mixture]$ python3 qc_scripts/moi.py qc_test/posteriors_pool1.mtx.gz 0.9
-# Done: [sl601@x2-02-1 guide-mixture]$ python3 qc_scripts/coverage.py qc_test/posteriors_pool1.mtx.gz 3343 0.1
-# Not Used: ? [sl601@x2-02-1 guide-mixture]$ python3 qc_scripts/post_thresholding.py qc_test/posteriors_pool1.mtx.gz 0.1 | gzip > qc_test/matrix.mtx.gz
-# [sl601@x2-02-1 guide-mixture]$ python3 qc_scripts/hist_assigned_counts.py qc_test/posteriors_pool1.mtx.gz qc_test/guide.mtx.gz 0.1 | gzip > qc_test/assigned_counts.mtx.gz
-# Make histogram of ^^
-# Done: [sl601@x2-02-1 samples]$ python3 ../../qc_scripts/extract_sample_avg.py > ../sample_avg.txt
-# Done: Make histogram of ^^
-# Make scatterplot of x=posterior/y=count values
-
-
 def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate CLEANSER QC information")
     parser.add_argument("-i", "--input", type=argparse.FileType(), help="Cleanser posterior output file", required=True)
@@ -251,6 +284,12 @@ def run_cli():
         mm_lines = read_mm_file(args.guide_counts)
         assigned_counts_histogram(predictions, mm_lines, args.threshold)
         plt.savefig(output_dir / Path("umi_hist.png"))
+
+        posterior_umi_scatterplot(predictions, mm_lines)
+        plt.savefig(output_dir / Path("umi_count_scatter.png"))
+
+        posterior_umi_scatterplot_log2(predictions, mm_lines)
+        plt.savefig(output_dir / Path("umi_count_scatter_log2.png"))
 
     if args.samples is not None:
         samples = read_sample_data(args.samples)

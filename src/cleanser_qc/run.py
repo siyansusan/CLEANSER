@@ -245,8 +245,18 @@ def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate CLEANSER QC information")
     parser.add_argument("-i", "--input", type=argparse.FileType(), help="Cleanser posterior output file", required=True)
     parser.add_argument("-o", "--output-directory", help="Cleanser QC output directory", required=True)
-    parser.add_argument("-g", "--guide-counts", type=argparse.FileType(), help="Guide count file")
-    parser.add_argument("-s", "--samples", type=argparse.FileType(), help="Cleanser sampling data")
+    parser.add_argument(
+        "-g",
+        "--guide-counts",
+        type=argparse.FileType(),
+        help="Guide count file. Needed for UMI histogram and scatterplots",
+    )
+    parser.add_argument(
+        "-s",
+        "--samples",
+        type=argparse.FileType(),
+        help="Cleanser sampling data. Needed for sample averageing and histogram",
+    )
     parser.add_argument(
         "-t", "--threshold", type=float, default=0.0, help="Disregard assignment probabilities below this value"
     )

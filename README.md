@@ -55,3 +55,37 @@ CLEANSER depends on something called [CmdStan](https://mc-stan.org/docs/cmdstan-
 ## Input File Format
 
 The input file has a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html#MMformat)-esque format where the column values are `Guide ID`, `Cell ID`, and `Guide Count`, in that order.
+
+## Quality Control
+
+A command, `cleanser_qc`, that will run a script to output QC information has been included.
+
+```
+usage: cleanser_qc [-h] -i INPUT -o OUTPUT_DIRECTORY [-g GUIDE_COUNTS] [-s SAMPLES] [-t THRESHOLD]
+
+Generate CLEANSER QC information
+
+options:
+  -h, --help            show this help message and exit
+  -i INPUT, --input INPUT
+                        Cleanser posterior output file
+  -o OUTPUT_DIRECTORY, --output-directory OUTPUT_DIRECTORY
+                        Cleanser QC output directory
+  -g GUIDE_COUNTS, --guide-counts GUIDE_COUNTS
+                        Guide count file. Needed for UMI histogram and scatterplots
+  -s SAMPLES, --samples SAMPLES
+                        Cleanser sampling data. Needed for sample mean, variance, and mean histogram
+  -t THRESHOLD, --threshold THRESHOLD
+                        Disregard assignment probabilities below this value
+```
+
+`--input` and `--output-directory` are required, everything else is optional. When run including all the possible input files it will generate the following information:
+
+- MOI
+- Coverage
+- Sample means
+- A histogram of sample means
+- Sample variance
+- A scatterplot of UMI/posteriors
+- A scatterplot of UMI/posteriors with UMIs on a log2 scale
+- UMI histogram

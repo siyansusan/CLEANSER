@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from io import StringIO
 from math import log2
 from pathlib import Path
+from statistics import mean, variance
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -43,7 +44,7 @@ class Prediction:
     prediction: float
 
 
-def per_guide_sample_averages(
+def per_guide_sample_stats(
     samples: list[CSSampleMetadata | DCSampleMetadata],
 ) -> list[CSSampleMetadata | DCSampleMetadata]:
 
@@ -53,44 +54,61 @@ def per_guide_sample_averages(
         raise ValueError("No samples")
 
     if isinstance(samples[0], CSSampleMetadata):
-        sample_tallies = defaultdict(lambda: [0, 0.0, 0.0, 0.0, 0.0])
+        sample_tallies = defaultdict(lambda: [[], [], [], []])
         for sample in samples:
             running_tally = sample_tallies[sample.guide_id]
-            running_tally[0] += 1
-            running_tally[1] += sample.r
-            running_tally[2] += sample.mu
-            running_tally[3] += sample.dispersion
-            running_tally[4] += sample.lamb
+            running_tally[0].append(sample.r)
+            running_tally[1].append(sample.mu)
+            running_tally[2].append(sample.dispersion)
+            running_tally[3].append(sample.lamb)
 
-        return [
-            CSSampleMetadata(
-                guide_id, tally[1] / tally[0], tally[2] / tally[0], tally[3] / tally[0], tally[4] / tally[0]
-            )
+        means = [
+            CSSampleMetadata(guide_id, mean(tally[0]), mean(tally[1]), mean(tally[2]), mean(tally[3]))
             for guide_id, tally in sample_tallies.items()
         ]
+
+        variances = [
+            CSSampleMetadata(guide_id, variance(tally[0]), variance(tally[1]), variance(tally[2]), variance(tally[3]))
+            for guide_id, tally in sample_tallies.items()
+        ]
+
+        return means, variances
 
     if isinstance(samples[0], DCSampleMetadata):
-        sample_tallies = defaultdict(lambda: [0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        sample_tallies = defaultdict(lambda: [[], [], [], [], []])
         for sample in samples:
             running_tally = sample_tallies[sample.guide_id]
-            running_tally[0] += 1
-            running_tally[1] += sample.r
-            running_tally[2] += sample.mu
-            running_tally[3] += sample.dispersion
-            running_tally[4] += sample.neg_binom_mean
-            running_tally[5] += sample.neg_binom_dispersion
+            running_tally[0].append(sample.r)
+            running_tally[1].append(sample.mu)
+            running_tally[2].append(sample.dispersion)
+            running_tally[3].append(sample.neg_binom_mean)
+            running_tally[4].append(sample.neg_binom_dispersion)
 
-        return [
+        means = [
             DCSampleMetadata(
                 guide_id,
-                tally[1] / tally[0],
-                tally[2] / tally[0],
-                tally[3] / tally[0],
-                tally[4] / tally[0],
-                tally[5] / tally[0],
+                mean(tally[0]),
+                mean(tally[1]),
+                mean(tally[2]),
+                mean(tally[3]),
+                mean(tally[4]),
             )
             for guide_id, tally in sample_tallies.items()
         ]
+
+        variances = [
+            DCSampleMetadata(
+                guide_id,
+                variance(tally[0]),
+                variance(tally[1]),
+                variance(tally[2]),
+                variance(tally[3]),
+                variance(tally[4]),
+            )
+            for guide_id, tally in sample_tallies.items()
+        ]
+
+        return means, variances
 
     raise ValueError("Invalid sample type")
 
@@ -127,32 +145,32 @@ def plot_scatter(x, y, title="", x_label="", y_label="") -> Figure:
     return fig
 
 
-def sample_average_output(averages: list[CSSampleMetadata | DCSampleMetadata]) -> str:
-    average_text = StringIO()
+def sample_stat_output(statistics: list[CSSampleMetadata | DCSampleMetadata]) -> str:
+    statistic_text = StringIO()
 
-    if isinstance(averages[0], CSSampleMetadata):
-        average_text.write("guide\tr\tmu\tdisp\tlambda\n")
-        for ave in averages:
-            average_text.write(f"{ave.guide_id}\t{ave.r}\t{ave.mu}\t{ave.dispersion}\t{ave.lamb}\n")
+    if isinstance(statistics[0], CSSampleMetadata):
+        statistic_text.write("guide\tr\tmu\tdisp\tlambda\n")
+        for ave in statistics:
+            statistic_text.write(f"{ave.guide_id}\t{ave.r}\t{ave.mu}\t{ave.dispersion}\t{ave.lamb}\n")
 
-    if isinstance(averages[0], DCSampleMetadata):
-        average_text.write("guide\tr\tmu\tdisp\tn_mu\tn_disp\n")
-        for ave in averages:
-            average_text.write(
+    if isinstance(statistics[0], DCSampleMetadata):
+        statistic_text.write("guide\tr\tmu\tdisp\tn_mu\tn_disp\n")
+        for ave in statistics:
+            statistic_text.write(
                 f"{ave.guide_id}\t{ave.r}\t{ave.mu}\t{ave.dispersion}\t{ave.neg_binom_mean}\t{ave.neg_binom_dispersion}\n"
             )
 
-    return average_text.getvalue()
+    return statistic_text.getvalue()
 
 
-def sample_average_histogram(averages: list[CSSampleMetadata | DCSampleMetadata]) -> Figure:
-    average_count = len(averages)
+def sample_mean_histogram(means: list[CSSampleMetadata | DCSampleMetadata]) -> Figure:
+    mean_count = len(means)
 
-    if average_count == 0:
-        raise ValueError("No averages")
+    if mean_count == 0:
+        raise ValueError("No means")
 
-    avg_r = [a.r for a in averages]
-    fig = plot_hist(avg_r, 30, title="cleanser", x_label="sample average", y_label="count")
+    mean_r = [a.r for a in means]
+    fig = plot_hist(mean_r, 30, title="cleanser", x_label="sample mean", y_label="count")
     return fig
 
 
@@ -255,7 +273,7 @@ def get_args() -> argparse.Namespace:
         "-s",
         "--samples",
         type=argparse.FileType(),
-        help="Cleanser sampling data. Needed for sample averageing and histogram",
+        help="Cleanser sampling data. Needed for sample mean, variance, and mean histogram",
     )
     parser.add_argument(
         "-t", "--threshold", type=float, default=0.0, help="Disregard assignment probabilities below this value"
@@ -304,7 +322,8 @@ def run_cli():
     if args.samples is not None:
         samples = read_sample_data(args.samples)
         assert len(samples) > 0
-        averages = per_guide_sample_averages(samples)
-        write(output_dir, "sample_avg.txt", sample_average_output(averages))
-        sample_average_histogram(averages)
-        plt.savefig(output_dir / Path("sample_average_hist.png"))
+        means, variances = per_guide_sample_stats(samples)
+        write(output_dir, "sample_mean.txt", sample_stat_output(means))
+        write(output_dir, "sample_variance.txt", sample_stat_output(variances))
+        sample_mean_histogram(means)
+        plt.savefig(output_dir / Path("sample_mean_hist.png"))

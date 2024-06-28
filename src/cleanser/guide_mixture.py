@@ -21,11 +21,11 @@ from .constants import (
     MAX_SEED_INT,
 )
 
-MMLines = list[tuple[int, int, int]]
-CountData = dict[int, float]
+MMLines = list[tuple[str, str, int]]
+CountData = dict[str, float]
 
 
-def mm_counts(mtx_lines: MMLines, norm_lpf: int) -> tuple[dict[int, int], dict[int, list[tuple[int, int]]]]:
+def mm_counts(mtx_lines: MMLines, norm_lpf: int) -> tuple[dict[str, int], dict[str, list[tuple[str, int]]]]:
     cumulative_counts = {}
     per_guide_counts = defaultdict(lambda: [])
 
@@ -51,7 +51,7 @@ def mm_counts(mtx_lines: MMLines, norm_lpf: int) -> tuple[dict[int, int], dict[i
     return cumulative_counts, per_guide_counts
 
 
-def normalize(count_data: dict[int, int]) -> CountData:
+def normalize(count_data: dict[str, int]) -> CountData:
     count = len(count_data)
     total_size = sum(count_data.values())
     avg_size = total_size / count
@@ -75,20 +75,20 @@ def run_stan(stan_args):
 
 
 async def run(
-    mm_lines,
-    model,
-    chains=DEFAULT_CHAINS,
-    normalization_lpf=DEFAULT_NORM_LPF,
-    num_parallel_runs=DEFAULT_RUNS,
-    num_samples=DEFAULT_SAMPLE,
-    num_warmup=DEFAULT_WARMUP,
-    seed=DEFAULT_SEED,
+    mm_lines: MMLines,
+    model_file: str,
+    chains: int = DEFAULT_CHAINS,
+    normalization_lpf: int = DEFAULT_NORM_LPF,
+    num_parallel_runs: int = DEFAULT_RUNS,
+    num_samples: int = DEFAULT_SAMPLE,
+    num_warmup: int = DEFAULT_WARMUP,
+    seed: int = DEFAULT_SEED,
 ):
     sorted_mm_lines = sorted(mm_lines, key=itemgetter(0, 1))
     cumulative_counts, per_guide_counts = mm_counts(sorted_mm_lines, normalization_lpf)
     normalized_counts = normalize(cumulative_counts)
 
-    stan_model = CmdStanModel(stan_file=files("cleanser").joinpath(model))
+    stan_model = CmdStanModel(stan_file=files("cleanser").joinpath(model_file))
 
     stan_params = [
         (
@@ -99,7 +99,7 @@ async def run(
             num_warmup,
             num_samples,
             chains,
-            (seed + guide_id) % MAX_SEED_INT,
+            (seed + int(guide_id)) % MAX_SEED_INT,
         )
         for guide_id, guide_counts in per_guide_counts.items()
     ]

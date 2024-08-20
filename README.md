@@ -52,6 +52,23 @@ CLEANSER depends on something called [CmdStan](https://mc-stan.org/docs/cmdstan-
 
 `--cs`, `--crop-seq`: Use mixture model for crop-seq experiments. Must specify either this or `--direct-capture`.
 
+
+### Using CLEANSER with Cell Ranger
+
+The output from Cell Ranger can't be used directly by CLEANSER. The matrix market file that Cell Ranger
+outputs includes entries for "Gene Expression" values and we don't want those in the CLEANSER input; we
+only want the "CRISPR Guide Capture" entries. To create a new matrix market file with only the "CRISPR
+Guide Capture" values use the `cr2cleanser` utility included with CLEANSER.
+
+    cr2cleanser [-h] -m MATRIX_MARKET -f FEATURES [-o OUTPUT]
+
+    Generate a MM file suitable for CLEANSER from Cell Ranger outputs
+
+`-h`, `--help`: show this help message and exit
+`-m MATRIX_MARKET`, `--matrix-market MATRIX_MARKET`: Cell Ranger matrix market output file
+`-f FEATURES`, `--features FEATURES`: Cell Ranger features output
+`-o OUTPUT`, `--output OUTPUT`: output file for use by CLEANSER
+
 ## Input File Format
 
 The input file has a [Matrix Market file](https://math.nist.gov/MatrixMarket/formats.html#MMformat)-esque format where the column values are `Guide ID`, `Cell ID`, and `Guide Count`, in that order.

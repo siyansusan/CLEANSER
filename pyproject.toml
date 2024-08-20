@@ -15,6 +15,7 @@ keywords = ["scRNA-seq", "bioinformatics"]
 
 [project.scripts]
 cleanser = "cleanser.run:run_cli"
+cr2cleanser = "cleanser.cellranger:run_cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

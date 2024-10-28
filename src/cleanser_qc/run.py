@@ -6,6 +6,7 @@ from io import StringIO
 from math import log2
 from pathlib import Path
 from statistics import mean, variance
+from typing import cast
 
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
@@ -45,8 +46,8 @@ class Prediction:
 
 
 def per_guide_sample_stats(
-    samples: list[CSSampleMetadata | DCSampleMetadata],
-) -> list[CSSampleMetadata | DCSampleMetadata]:
+    samples: list[CSSampleMetadata] | list[DCSampleMetadata],
+) -> tuple[list[CSSampleMetadata] | list[DCSampleMetadata], list[CSSampleMetadata] | list[DCSampleMetadata]]:
 
     sample_count = len(samples)
 
@@ -55,7 +56,7 @@ def per_guide_sample_stats(
 
     if isinstance(samples[0], CSSampleMetadata):
         sample_tallies = defaultdict(lambda: [[], [], [], []])
-        for sample in samples:
+        for sample in cast(list[CSSampleMetadata], samples):
             running_tally = sample_tallies[sample.guide_id]
             running_tally[0].append(sample.r)
             running_tally[1].append(sample.mu)
@@ -76,7 +77,7 @@ def per_guide_sample_stats(
 
     if isinstance(samples[0], DCSampleMetadata):
         sample_tallies = defaultdict(lambda: [[], [], [], [], []])
-        for sample in samples:
+        for sample in cast(list[DCSampleMetadata], samples):
             running_tally = sample_tallies[sample.guide_id]
             running_tally[0].append(sample.r)
             running_tally[1].append(sample.mu)
@@ -145,17 +146,17 @@ def plot_scatter(x, y, title="", x_label="", y_label="") -> Figure:
     return fig
 
 
-def sample_stat_output(statistics: list[CSSampleMetadata | DCSampleMetadata]) -> str:
+def sample_stat_output(statistics: list[CSSampleMetadata] | list[DCSampleMetadata]) -> str:
     statistic_text = StringIO()
 
     if isinstance(statistics[0], CSSampleMetadata):
         statistic_text.write("guide\tr\tmu\tdisp\tlambda\n")
-        for ave in statistics:
+        for ave in cast(list[CSSampleMetadata], statistics):
             statistic_text.write(f"{ave.guide_id}\t{ave.r}\t{ave.mu}\t{ave.dispersion}\t{ave.lamb}\n")
 
     if isinstance(statistics[0], DCSampleMetadata):
         statistic_text.write("guide\tr\tmu\tdisp\tn_mu\tn_disp\n")
-        for ave in statistics:
+        for ave in cast(list[DCSampleMetadata], statistics):
             statistic_text.write(
                 f"{ave.guide_id}\t{ave.r}\t{ave.mu}\t{ave.dispersion}\t{ave.neg_binom_mean}\t{ave.neg_binom_dispersion}\n"
             )
@@ -163,7 +164,7 @@ def sample_stat_output(statistics: list[CSSampleMetadata | DCSampleMetadata]) ->
     return statistic_text.getvalue()
 
 
-def sample_mean_histogram(means: list[CSSampleMetadata | DCSampleMetadata]) -> Figure:
+def sample_mean_histogram(means: list[CSSampleMetadata] | list[DCSampleMetadata]) -> Figure:
     mean_count = len(means)
 
     if mean_count == 0:
@@ -235,8 +236,11 @@ def read_predictions(input_file) -> list[Prediction]:
     return [Prediction(guide_id=l[0], cell_id=l[1], prediction=float(l[2])) for l in reader]
 
 
-def read_sample_data(sample_data_file) -> list[CSSampleMetadata | DCSampleMetadata]:
+def read_sample_data(sample_data_file) -> list[CSSampleMetadata] | list[DCSampleMetadata]:
     reader = csv.DictReader(sample_data_file, delimiter="\t")
+    if reader.fieldnames is None:
+        raise ValueError("Invalid sample data file")
+
     if len(reader.fieldnames) == 5:
         return [
             CSSampleMetadata(l["guide id"], float(l["r"]), float(l["mu"]), float(l["Disp"]), float(l["lambda"]))
